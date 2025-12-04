@@ -1,0 +1,162 @@
+esphome:
+  name: zehnder-controller-luqilo
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: "QtQ5Du;g!bSAs`4&?XRh"
+  encryption:
+    key: "VEd2HRtV8kO7D1KV26anQctVYdSRW9nda5fCVfxKn94="
+ota:
+  - platform: esphome
+    password: "QtQ5Du;g!bSAs`4&?XRh"
+
+wifi:
+  # ssid: "ssid"
+  # password: "supersecure"
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Zehnder-Controller-Luqilo"
+    password: "wTLQH7JaHIO7"
+  on_connect:
+    then:
+      - output.turn_on: wifi_led
+  on_disconnect:
+    then:
+      - output.turn_off: wifi_led
+captive_portal:
+    
+
+output:
+  - platform: ledc
+    pin: GPIO2
+    id: zehnder_pwm
+
+  - platform: gpio
+    pin: GPIO47
+    id: wifi_led
+
+fan:
+  - platform: speed
+    output: zehnder_pwm
+    name: "Zehnder Fan Speed"
+    id: zehnder_fan
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi Signal Sensor"
+    update_interval: 60s
+
+  - platform: adc
+    id: zehnder_voltage_sensor
+    pin: GPIO1
+    name: "Living Room CO2"
+    update_interval: 30s
+    attenuation: 11db
+
+  - platform: template
+    name: "CO2 Concentration"
+    lambda: |-
+      return id(zehnder_voltage_sensor).state * 1730;
+    update_interval: 30s
+    unit_of_measurement: "ppm"
+
+  - platform: template
+    name: "Override Time Remaining"
+    id: override_time_remaining
+    update_interval: 1s
+    unit_of_measurement: "s"
+    lambda: |-
+      if (id(override_active)) {
+        uint32_t now = (uint32_t)(esp_timer_get_time() / 1000000);
+        if (now >= id(override_end_time)) {
+          return 0;
+        } else {
+          return (id(override_end_time) - now);
+        }
+      }
+      return 0;
+
+switch:
+  - platform: template
+    name: "Override Automations"
+    id: override_automations
+    optimistic: true
+
+globals:
+  - id: override_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+  - id: override_end_time
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+number:
+  - platform: template
+    name: "Override Duration"
+    id: override_duration
+    optimistic: true
+    min_value: 10
+    max_value: 300
+    step: 5
+    unit_of_measurement: "min"
+
+button:
+  - platform: template
+    name: "Start Fan Override"
+    on_press:
+      then:
+        - switch.turn_on: override_automations
+        - globals.set:
+            id: override_active
+            value: "true"
+        - globals.set:
+            id: override_end_time
+            value: !lambda |-
+              uint32_t now = (uint32_t)(esp_timer_get_time() / 1000000);
+              return now + (uint32_t)(id(override_duration).state * 60);
+        - logger.log: "Fan override started"
+
+  - platform: template
+    name: "Cancel Fan Override"
+    on_press:
+      then:
+        - switch.turn_off: override_automations
+        - globals.set:
+            id: override_active
+            value: "false"
+        - globals.set:
+            id: override_end_time
+            value: "0"
+        - output.set_level:
+            id: zehnder_pwm
+            level: 0
+        - fan.turn_off: zehnder_fan
+        - logger.log: "Fan override canceled"
+
+interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            lambda: 'return id(override_active);'
+          then:
+            - lambda: |-
+                uint32_t now = (uint32_t)(esp_timer_get_time() / 1000000);
+                if (now >= id(override_end_time)) {
+                  id(override_active) = false;
+                  id(override_automations).turn_off();
+                  id(zehnder_fan).turn_off();
+                  id(zehnder_pwm).set_level(0);
+                  ESP_LOGI("override", "Override duration ended, restoring automation control.");
+                }
