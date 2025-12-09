@@ -1,0 +1,160 @@
+blueprint:
+  name: Luqilo Zehnder Controller
+  description: Blueprint to add a humidity sensor, cooktop sensor and override switch to the zehnder controller.
+  domain: automation
+  author: Luuk Grefte
+  input:
+    fan_entity:
+      name: Zehnder Fan
+      description: A Fan entity whcih controls the Zehnder Fan speed. This fan is created by Grijs Hometech Zehnder Controller PCB.
+      default: fan.zehnder_fan_speed
+      selector:
+        entity:
+          filter:
+              domain: fan
+    humidity_sensor:
+      name: Bathroom Humidity
+      description: A binary sensor Theshold which states that the current humidity is larger then the filtered humidity. See the hometech manual for more information to create this.
+      default: binary_sensor.threshold_bathroom_humidity
+      selector:
+        entity:
+          filter:
+              domain: binary_sensor
+    power_cooking_sensor:
+      name: Cooktop Power
+      description: A sensor which read the current power of the cooktop.
+      default: sensor.0xa4c1383e1f93e631_power
+      selector:
+        entity:
+          filter:
+              domain: sensor
+    co2_sensor:
+      name: CO2 Sensor
+      description: A sensor which reads the living room temperature of the original Zehnder device. This sensor is created by Grijs Hometech Zehnder Controller PCB. 
+      default: sensor.co2_concentration
+      selector:
+        entity:
+          filter:
+              domain: sensor
+    override_switch:
+      name: Override Switch
+      description: A switch which allows to override the current fan value, effectively removing the automations. This sensor is created by Grijs Hometech Zehnder Controller PCB.
+      default: switch.override_automations
+      selector:
+        entity:
+          filter:
+              domain: switch
+    maxppm:
+      name: PPM for 100% fan
+      description: PPM value which will activate maximum Fan speed.
+      default: 1500
+      selector:
+        number:
+          min: 0
+          max: 2000
+          unit_of_measurement: ppm
+    minppm:
+      name: PPM for minimal fan speed
+      description: lower ppm value such that the minimal fan speed is active. 
+      default: 425
+      selector:
+        number:
+          min: 0
+          max: 2000
+          unit_of_measurement: ppm
+    minfanspeed:
+      name: Minimal fan speed
+      description: Minimal fan speed if below lower ppm threshold.
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: percent
+    bathroomfanspeed:
+      name: Bathroom/Cooktop Fan speed
+      description: Fan speed when humidity is detected in the Bathroom or the Cooktop is activated.
+      default: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: percent
+    schedule_start:
+      name: Schedule start time
+      description: Automations only runs after this time. Except for the original Zehnder CO2 control.
+      default: "06:00:00"
+      selector:
+        time:
+    schedule_stop:
+      name: Schedule stop time
+      description: Automations does not run after this time. Except for the original Zehnder CO2 control.
+      default: "23:30:00"
+      selector:
+        time:
+variables:
+  var_maxppm: !input maxppm
+  var_minppm: !input minppm
+  var_minfanspeed: !input minfanspeed
+  var_bathroomfanspeed: !input bathroomfanspeed
+  var_fan_entity: !input fan_entity
+  var_humidity_sensor: !input humidity_sensor
+  var_power_cooking_sensor: !input power_cooking_sensor
+  var_co2_sensor: !input co2_sensor
+  var_override_switch: !input override_switch
+  
+triggers:
+  - entity_id:
+      - !input co2_sensor
+    trigger: state
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 1
+actions:
+  - if:
+      - condition: time
+        after: !input schedule_start
+        before: !input schedule_stop
+    then:
+      - action: fan.set_percentage
+        target:
+          entity_id: "{{ var_fan_entity }}"
+        data:
+          percentage: >
+            {% if is_state(var_override_switch, 'off') %}
+              {% if is_state(var_humidity_sensor, 'on') or states(var_power_cooking_sensor) | float(0) > 100 %}
+                {{ var_bathroomfanspeed }}
+              {% else %}
+                {% set ppm = states(var_co2_sensor) | float(0) %}
+                {% if ppm < var_minppm %}
+                  {{ var_minfanspeed }}
+                {% elif ppm > var_maxppm %}
+                  {{ var_bathroomfanspeed }}
+                {% else %}
+                  {{ ((ppm - var_minppm) / (var_maxppm - var_minppm) * (100 - var_minfanspeed) + var_minfanspeed) | round(0) }}
+                {% endif %}
+              {% endif %}
+            {% else %}
+              {{ var_minfanspeed }}
+            {% endif %}
+    else:
+      - action: fan.set_percentage
+        target:
+          entity_id: "{{ var_fan_entity }}"
+        data:
+          percentage: >
+            {% if is_state(var_override_switch, 'off') %}
+              {% if is_state(var_humidity_sensor, 'on') or states(var_power_cooking_sensor) | float(0) > 100 %}
+                {{ 35 }}
+              {% else %}
+                {% set ppm = states(var_co2_sensor) | float(0) %}
+                {% if ppm < var_minppm %}
+                  {{ var_minfanspeed }}
+                {% elif ppm > var_maxppm %}
+                  {{ 35 }}
+                {% endif %}
+              {% endif %}
+            {% else %}
+              {{ var_minfanspeed }}
+            {% endif %}
