@@ -59,7 +59,7 @@ sensor:
     pin: GPIO1
     name: "Living Room CO2"
     update_interval: 30s
-    attenuation: 11db
+    attenuation: 12db
 
   - platform: template
     name: "CO2 Concentration"
