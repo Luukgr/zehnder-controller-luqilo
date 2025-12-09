@@ -110,6 +110,10 @@ triggers:
       hours: 0
       minutes: 0
       seconds: 1
+conditions:
+  - condition: state
+    entity_id: !input override_switch
+    state: 'off'
 actions:
   - if:
       - condition: time
@@ -121,21 +125,17 @@ actions:
           entity_id: "{{ var_fan_entity }}"
         data:
           percentage: >
-            {% if is_state(var_override_switch, 'off') %}
-              {% if is_state(var_humidity_sensor, 'on') or states(var_power_cooking_sensor) | float(0) > 100 %}
+            {% if is_state(var_humidity_sensor, 'on') or states(var_power_cooking_sensor) | float(0) > 100 %}
+              {{ var_bathroomfanspeed }}
+            {% else %}
+              {% set ppm = states(var_co2_sensor) | float(0) %}
+              {% if ppm < var_minppm %}
+                {{ var_minfanspeed }}
+              {% elif ppm > var_maxppm %}
                 {{ var_bathroomfanspeed }}
               {% else %}
-                {% set ppm = states(var_co2_sensor) | float(0) %}
-                {% if ppm < var_minppm %}
-                  {{ var_minfanspeed }}
-                {% elif ppm > var_maxppm %}
-                  {{ var_bathroomfanspeed }}
-                {% else %}
-                  {{ ((ppm - var_minppm) / (var_maxppm - var_minppm) * (100 - var_minfanspeed) + var_minfanspeed) | round(0) }}
-                {% endif %}
+                {{ ((ppm - var_minppm) / (var_maxppm - var_minppm) * (100 - var_minfanspeed) + var_minfanspeed) | round(0) }}
               {% endif %}
-            {% else %}
-              {{ var_minfanspeed }}
             {% endif %}
     else:
       - action: fan.set_percentage
@@ -143,17 +143,13 @@ actions:
           entity_id: "{{ var_fan_entity }}"
         data:
           percentage: >
-            {% if is_state(var_override_switch, 'off') %}
-              {% if is_state(var_humidity_sensor, 'on') or states(var_power_cooking_sensor) | float(0) > 100 %}
-                {{ 35 }}
-              {% else %}
-                {% set ppm = states(var_co2_sensor) | float(0) %}
-                {% if ppm < var_minppm %}
-                  {{ var_minfanspeed }}
-                {% elif ppm > var_maxppm %}
-                  {{ 35 }}
-                {% endif %}
-              {% endif %}
+            {% if is_state(var_humidity_sensor, 'on') or states(var_power_cooking_sensor) | float(0) > 100 %}
+              {{ 35 }}
             {% else %}
-              {{ var_minfanspeed }}
+              {% set ppm = states(var_co2_sensor) | float(0) %}
+              {% if ppm < var_minppm %}
+                {{ var_minfanspeed }}
+              {% elif ppm > var_maxppm %}
+                {{ 35 }}
+              {% endif %}
             {% endif %}
