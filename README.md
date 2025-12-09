@@ -1,5 +1,10 @@
 # Luqilo Zehnder Controller Blueprint
 
+<div align="center">
+  <a href="https://www.tindie.com/stores/luqilo/?ref=offsite_badges&utm_source=sellers_Luqilo&utm_medium=badges&utm_campaign=badge_small"><img src="https://d2ss6ovg47m0r5.cloudfront.net/badges/tindie-smalls.png" alt="I sell on Tindie" width="200" height="55"></a>
+  <a href="https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FLuukgr%2Fzehnder-controller-luqilo%2Fblob%2Fmain%2Fluqilo-zehnder-blueprint.yaml"><img src="https://my.home-assistant.io/badges/blueprint_import.svg" alt="Import Blueprint"></a>
+</div>
+
 This blueprint automates fan speed control for Zehnder ventilation systems based on CO2 levels, bathroom humidity, and cooktop usage.
 
 Most of the blueprint configuration is straightforward, but you will need to create a threshold sensor from your humidity sensor to detect showering activity. This process is explained in detail below.
@@ -107,7 +112,7 @@ Create a new automation using this blueprint and configure:
 
 - **Zehnder Fan**: Your Zehnder fan entity (default: `fan.zehnder_fan_speed`)
 - **Bathroom Humidity**: The threshold binary sensor created above (default: `binary_sensor.threshold_bathroom_humidity`)
-- **Cooktop Power**: Your cooktop power sensor (default: `sensor.0xa4c1383e1f93e631_power`)
+- **Cooktop Power**: Your cooktop power sensor 
 - **CO2 Sensor**: Your CO2 concentration sensor (default: `sensor.co2_concentration`)
 - **Override Switch**: Switch to disable automation (default: `switch.override_automations`)
 
@@ -140,4 +145,4 @@ When the override switch is turned ON, the automation stops running completely, 
 The automation checks all conditions every 30 seconds and adjusts fan speed accordingly.
 
 ## License
-This blueprint is provided as-is for use with Luqilo Zehnder Controller PCB systems.        
+This blueprint is provided as-is for use with Luqilo Zehnder Controller PCB systems.
