@@ -6,7 +6,7 @@ blueprint:
   input:
     fan_entity:
       name: Zehnder Fan
-      description: A Fan entity whcih controls the Zehnder Fan speed. This fan is created by Grijs Hometech Zehnder Controller PCB.
+      description: A Fan entity whcih controls the Zehnder Fan speed. This fan is created by Luqilo Zehnder Controller PCB.
       default: fan.zehnder_fan_speed
       selector:
         entity:
@@ -30,7 +30,7 @@ blueprint:
               domain: sensor
     co2_sensor:
       name: CO2 Sensor
-      description: A sensor which reads the living room temperature of the original Zehnder device. This sensor is created by Grijs Hometech Zehnder Controller PCB. 
+      description: A sensor which reads the living room temperature of the original Zehnder device. This sensor is created by Luqilo Zehnder Controller PCB. 
       default: sensor.co2_concentration
       selector:
         entity:
@@ -38,7 +38,7 @@ blueprint:
               domain: sensor
     override_switch:
       name: Override Switch
-      description: A switch which allows to override the current fan value, effectively removing the automations. This sensor is created by Grijs Hometech Zehnder Controller PCB.
+      description: A switch which allows to override the current fan value, effectively removing the automations. This switch is created by Luqilo Zehnder Controller PCB.
       default: switch.override_automations
       selector:
         entity:
@@ -104,12 +104,8 @@ variables:
   var_override_switch: !input override_switch
   
 triggers:
-  - platform: state
-    entity_id: !input co2_sensor
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 1
+  - platform: time_pattern
+    seconds: "/30"
 conditions:
   - condition: state
     entity_id: !input override_switch
