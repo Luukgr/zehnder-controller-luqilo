@@ -104,9 +104,8 @@ variables:
   var_override_switch: !input override_switch
   
 triggers:
-  - entity_id:
-      - !input co2_sensor
-    trigger: state
+  - platform: state
+    entity_id: !input co2_sensor
     for:
       hours: 0
       minutes: 0
