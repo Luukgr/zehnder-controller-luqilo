@@ -64,7 +64,7 @@ sensor:
   - platform: template
     name: "CO2 Concentration"
     lambda: |-
-      return id(zehnder_voltage_sensor).state * 640 + 400;
+      return id(zehnder_voltage_sensor).state * 804;
     update_interval: 30s
     unit_of_measurement: "ppm"
 
